@@ -128,7 +128,7 @@ class CheckoutAssetMail extends Mailable
             return trans('mail.Asset_Checkout_Notification', ['tag' => $this->item->asset_tag]);
         }
 
-        return trans('mail.unaccepted_asset_reminder');
+        return trans_choice('mail.unaccepted_asset_reminder',1);
     }
 
     private function introductionLine(): string
