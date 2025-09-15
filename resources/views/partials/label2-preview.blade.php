@@ -1,6 +1,6 @@
 @once
     @push('css')
-        <style>
+        <style nonce="{{ csrf_token() }}">
             :root {
                 --l2p-height: 200px;
                 --l2p-background-color: aliceblue;
@@ -45,7 +45,7 @@
 @endonce
 
 @push('js')
-    <script>
+    <script nonce="{{ csrf_token() }}">
         document.addEventListener('alpine:init', () => {
 
             Alpine.data('label2_preview', () => ({

@@ -3,10 +3,18 @@
         <div class="box-header with-border">
             <div class="text-right">
                 <a class="btn btn-info btn-sm pull-right"
-                   onclick="$('#modal-create-token').modal('show');"
+                   id="button-create-token"
                    wire:click="$dispatch('openModal')">
                     {{ trans('general.create') }}
                 </a>
+
+                @push('js')
+                <script nonce="{{ csrf_token() }}">
+                    $('#button-create-token').on('click', function(event) {
+                        $('#modal-create-token').modal('show');
+                    })
+                </script>
+                @endpush
             </div>
         </div>
         <div class="box-body">
@@ -151,7 +159,7 @@
             </div>
         </div>
     </div>
-    <script>
+    <script nonce="{{ csrf_token() }}">
         window.addEventListener('tokenCreated', token => {
             $('#modal-create-token').modal('hide');
             $('#modal-access-token').modal('show');

@@ -81,20 +81,68 @@ class SecurityHeaders
         // and it will break things.
 
         if ((config('app.debug') != 'true') && (config('app.enable_csp') == 'true')) {
-            $csp_policy[] = "default-src 'self'";
-            $csp_policy[] = "style-src 'self' 'unsafe-inline'";
-            $csp_policy[] = "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
-            $csp_policy[] = "connect-src 'self'";
-            $csp_policy[] = "object-src 'none'";
-            $csp_policy[] = "font-src 'self' data:";
-            $csp_policy[] = "img-src 'self' data: ".config('app.url').' '.config('app.additional_csp_urls').' '.env('PUBLIC_AWS_URL').' https://secure.gravatar.com http://gravatar.com maps.google.com maps.gstatic.com *.googleapis.com';
-	          
-            if (config('filesystems.disks.public.driver') == 's3') {
-               $csp_policy[] = "img-src 'self' data:  ".config('filesystems.disks.public.url');
-            }
-            $csp_policy = join(';', $csp_policy);
+            ## start lax CSP
 
-            $response->headers->set('Content-Security-Policy', $csp_policy);
+            $laxCspPolicy[] = "default-src 'self'";
+            $laxCspPolicy[] = "style-src 'self' 'unsafe-inline'";
+            $laxCspPolicy[] = "script-src 'self' 'unsafe-inline' 'unsafe-eval'";
+            $laxCspPolicy[] = "connect-src 'self'";
+            $laxCspPolicy[] = "object-src 'none'";
+            $laxCspPolicy[] = "font-src 'self' data:";
+            $laxCspPolicy[] = "img-src 'self' data: " . config('app.url') . ' ' . config('app.additional_csp_urls') . ' ' . env('PUBLIC_AWS_URL') . ' https://secure.gravatar.com http://gravatar.com maps.google.com maps.gstatic.com *.googleapis.com';
+
+            if (config('filesystems.disks.public.driver') == 's3') {
+                $laxCspPolicy[] = "img-src 'self' data:  " . config('filesystems.disks.public.url');
+            }
+
+            ## end lax CSP
+
+            ## start strict CSP
+
+            $strictCspPolicy[] = "default-src 'self'";
+            // FIXME: There is a LOT of dynamically loaded inline styles into elements, so this isn't going to work for now...
+            // $strictCspPolicy[] = "style-src 'self' 'nonce-" . csrf_token() . "'";
+            $strictCspPolicy[] = "style-src 'self' 'unsafe-inline'";
+            $strictCspPolicy[] = "script-src 'self' 'nonce-" . csrf_token() . "'";
+            $strictCspPolicy[] = "connect-src 'self'";
+            $strictCspPolicy[] = "base-uri 'self'";
+            $strictCspPolicy[] = "form-action 'self'";
+            $strictCspPolicy[] = "object-src 'none'";
+            $strictCspPolicy[] = "font-src 'self' data:";
+            $strictCspPolicy[] = "img-src 'self' data: " . config('app.url') . ' ' . config('app.additional_csp_urls') . ' ' . env('PUBLIC_AWS_URL') . ' https://secure.gravatar.com https://gravatar.com https://maps.google.com https://maps.gstatic.com https://*.googleapis.com';
+
+            if (config('filesystems.disks.public.driver') == 's3') {
+                $strictCspPolicy[] = "img-src 'self' data:  " . config('filesystems.disks.public.url');
+            }
+
+            if (config('allow_iframing') == false) {
+                $strictCspPolicy[] = "frame-ancestors 'none'";
+            }
+
+            ## end strict CSP
+
+            if (!empty(config('csp_report_to'))) {
+                $cspReportToUri = config('csp_report_to');
+
+                $response->headers->set('Reporting-Endpoints', 'csp-endpoint="' . $cspReportToUri . '"');
+
+                $cspReportTo[] = "report-to csp-endpoint";
+                $cspReportTo[] = "report-uri " . $cspReportToUri;
+
+                $laxCspPolicy = array_merge($laxCspPolicy, $cspReportTo);
+                $strictCspPolicy = array_merge($strictCspPolicy, $cspReportTo);
+            }
+
+            $laxCspPolicy = join(';', $laxCspPolicy);
+            $strictCspPolicy = join(';', $strictCspPolicy);
+
+            if (config('enable_strict_csp') == true) {
+                $response->headers->set('Content-Security-Policy', $strictCspPolicy);
+            } else {
+                $response->headers->set('Content-Security-Policy', $laxCspPolicy);
+            }
+
+            $response->headers->set('Content-Security-Policy-Report-Only', $strictCspPolicy);
         }
 
         return $response;

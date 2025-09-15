@@ -34,7 +34,7 @@
           <label for="user_id" class="control-label" style="margin-right: 10px;">
             {{ trans('general.view_user_assets') }}:
           </label>
-          <select name="user_id" id="user_id" class="form-control select2" onchange="this.form.submit()" style="width: 250px; display: inline-block;">
+          <select name="user_id" id="user_id" class="form-control select2" style="width: 250px; display: inline-block;">
             @foreach ($subordinates as $subordinate)
               <option value="{{ $subordinate->id }}" {{ (int)$selectedUserId === (int)$subordinate->id ? ' selected' : '' }}>
                 {{ $subordinate->display_name }}
@@ -44,6 +44,13 @@
               </option>
             @endforeach
           </select>
+          @push('js')
+          <script nonce="{{ csrf_token() }}">
+            $('#user_id').on('change', function (event) {
+              this.form.submit();
+            })
+          </script>
+          @endpush
         </div>
       </form>
     </div>

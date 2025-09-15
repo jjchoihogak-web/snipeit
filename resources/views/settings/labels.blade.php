@@ -14,7 +14,7 @@
 {{-- Page content --}}
 @section('content')
 
-    <style>
+    <style nonce="{{ csrf_token() }}">
         .checkbox label {
             padding-right: 40px;
         }
@@ -87,7 +87,7 @@
                                         id="label2TemplateTable"
                                         class="table table-striped snipe-table"
                                     ></table>
-                                    <script>
+                                    <script nonce="{{ csrf_token() }}">
                                         document.addEventListener('DOMContentLoaded', () => {
                                             const chosenLabel = "{{ old('label2_template', $chosenLabel ?? '') }}";
                                             $('#label2TemplateTable').on('load-success.bs.table', (e) => {
@@ -383,7 +383,7 @@
                             <input name="labels_display_company_name" type="hidden" value="{{ old('labels_display_company_name', $setting->labels_display_company_name) }}" />
                         @else
                             <!-- Legacy settings -->
-                    <style>
+                    <style nonce="{{ csrf_token() }}">
                         .checkbox label {
                             padding-right: 40px;
                         }

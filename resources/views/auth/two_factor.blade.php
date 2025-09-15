@@ -42,10 +42,19 @@
                             <button class="btn btn-lg btn-primary btn-block">{{ trans('general.submit')  }}</button>
                         </div>
                         <div class="col-md-12 col-sm-12 col-xs-12 text-right" style="padding-top: 10px;">
-                            <a href="{{ route('logout.get') }}" onclick="document.getElementById('logout-form').submit(); return false;">
+                            <a href="{{ route('logout.get') }}" id="2fa-logout-button">
                                 {{ trans('general.cancel')  }}
                             </a>
                         </div>
+
+                        @push('js')
+                        <script nonce="{{ csrf_token() }}">
+                            $("#2fa-logout-button").on('click', function(event) {
+                                document.getElementById('logout-form').submit();
+                                return false;
+                            })
+                        </script>
+                        @endpush
             </div>
             </form>
             <form id="logout-form" action="{{ route('logout.post') }}" method="POST" style="display: none;">

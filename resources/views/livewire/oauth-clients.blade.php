@@ -18,9 +18,16 @@
                 <div class="box-tools pull-right">
                         <a class="btn btn-primary"
                            wire:click="$dispatch('openModal')"
-                           onclick="$('#modal-create-client').modal('show');">
+                           id="button-create-client">
                             {{ trans('general.create') }}
                         </a>
+                        @push('js')
+                        <script nonce="{{ csrf_token() }}">
+                            $('#button-create-client').on('click', function(event) {
+                                $('#modal-create-client').modal('show');
+                            })
+                        </script>
+                        @endpush
                 </div>
             </div>
 
@@ -93,12 +100,20 @@
 
                                     <a class="action-link btn btn-sm btn-warning"
                                        wire:click="editClient('{{ $client->id }}')"
-                                       onclick="$('#modal-edit-client').modal('show');">
+                                       id="button-edit-client">
                                         <i class="fas fa-pencil-alt" aria-hidden="true"></i>
                                         <span class="sr-only">
                                             {{ trans('general.update') }}
                                         </span>
                                     </a>
+
+                                    @push('js')
+                                    <script nonce="{{ csrf_token() }}">
+                                        $('#button-edit-client').on('click', function(event) {
+                                            $('#modal-edit-client').modal('show');
+                                        })
+                                    </script>
+                                    @endpush
 
                                     <a class="action-link btn btn-danger btn-sm" wire:click="deleteClient('{{ $client->id }}')">
                                         <i class="fas fa-trash" aria-hidden="true"></i>
@@ -384,7 +399,7 @@
             </div>
         </div>
     </div>
-    <script>
+    <script nonce="{{ csrf_token() }}">
         document.addEventListener('DOMContentLoaded', function() {
             Livewire.on('openModal', () => {
                 $('#modal-create-client').modal('show').on('shown.bs.modal', function() {

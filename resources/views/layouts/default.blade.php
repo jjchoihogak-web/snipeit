@@ -67,7 +67,7 @@ dir="{{ Helper::determineLanguageDirection() }}">
 
     {{-- Custom CSS --}}
     @if (($snipeSettings) && ($snipeSettings->custom_css))
-        <style>
+        <style nonce="{{ csrf_token() }}">
             {!! $snipeSettings->show_custom_css() !!}
         </style>
     @endif
@@ -411,10 +411,19 @@ dir="{{ Helper::determineLanguageDirection() }}">
                                         <li>
 
                                             <a href="{{ route('logout.get') }}"
-                                               onclick="event.preventDefault(); document.getElementById('logout-form').submit();">
+                                                id="logout-button">
                                                 <x-icon type="logout" class="fa-fw" />
                                                  {{ trans('general.logout') }}
                                             </a>
+
+                                            @push('js')
+                                            <script nonce="{{ csrf_token() }}" defer>
+                                                $("#logout-button").on('click', function(event) {
+                                                    event.preventDefault();
+                                                    document.getElementById('logout-form').submit();
+                                                })
+                                            </script>
+                                            @endpush
 
                                             <form id="logout-form" action="{{ route('logout.post') }}" method="POST" style="display: none;">
                                                 <button type="submit" style="display: none;" title="logout"></button>
@@ -888,7 +897,7 @@ dir="{{ Helper::determineLanguageDirection() }}">
                     <div class="row">
                         <div class="col-md-12" style="margin-bottom: 0px;">
 
-                        <style>
+                        <style nonce="{{ csrf_token() }}">
                             .breadcrumb-item {
                                 display: inline;
                                 list-style: none;
@@ -1075,7 +1084,7 @@ dir="{{ Helper::determineLanguageDirection() }}">
 
         {{-- Javascript files --}}
         <script src="{{ url(mix('js/dist/all.js')) }}" nonce="{{ csrf_token() }}"></script>
-        <script src="{{ url('js/select2/i18n/'.Helper::mapBackToLegacyLocale(app()->getLocale()).'.js') }}"></script>
+        <script src="{{ url('js/select2/i18n/'.Helper::mapBackToLegacyLocale(app()->getLocale()).'.js') }}" nonce="{{ csrf_token() }}"></script>
 
         {{-- Page level javascript --}}
         @stack('js')

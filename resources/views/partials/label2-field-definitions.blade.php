@@ -1,6 +1,6 @@
 @once
     @push('css')
-        <style>
+        <style nonce="{{ csrf_token() }}">
             :root {
                 --l2fd-background-color: rgb(246, 250, 255);
                 --l2fd-border-color:     #d2d6de;
@@ -139,7 +139,7 @@
 @endonce
 
 @push('js')
-    <script>
+    <script nonce="{{ csrf_token() }}">
         document.addEventListener('alpine:init', () => {
 
             Alpine.data('{{ $name }}', () => ({
@@ -249,7 +249,7 @@
     $selector = '[x-data="'.$name.'"]';
 @endphp
 @push('css')
-    <style>
+    <style nonce="{{ csrf_token() }}">
 
 
     </style>

@@ -14,7 +14,7 @@
   <div class="pull-right">
 
 
-    <form onsubmit="return false;" role="search" aria-label="Admin Options" id="setting-search">
+    <form role="search" aria-label="Admin Options" id="setting-search" class="js-suppress-submit">
       <div class="btn-group">
         <input id="searchinput" name="search" type="search" class="search form-control" placeholder="{{ trans('admin/settings/general.filter_by_keyword') }}" aria-label="keyword search">
         <span id="searchclear" class="fas fa-times" aria-hidden="true"></span>
@@ -35,7 +35,7 @@
 
 
 
-  <style>
+  <style nonce="{{ csrf_token() }}">
     #searchinput {
       width: 200px;
     }
