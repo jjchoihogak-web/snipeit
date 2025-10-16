@@ -19,7 +19,12 @@
 
 @section('inputFields')
 
-@include ('partials.forms.edit.name', ['translated_name' => trans('general.name')])
+    <!-- Name -->
+    <x-form-row
+            :label="trans('general.name')"
+            :$item
+            name="name"
+    />
 
 <!-- Label type -->
 <div class="form-group{{ $errors->has('statuslabel_types') ? ' has-error' : '' }}">
@@ -27,6 +32,7 @@
         {{ trans('admin/statuslabels/table.status_type') }}
     </label>
     <div class="col-md-7 required">
+
         <x-input.select
             name="statuslabel_types"
             :options="$statuslabel_types"
@@ -50,28 +56,35 @@
     </div>
 </div>
 
-@include ('partials.forms.edit.notes')
+    <!-- Notes -->
+    <x-form-row
+            :label="trans('general.notes')"
+            :$item
+            name="notes"
+            type="textarea"
+            maxlength="65000"
+            placeholder="{{ trans('general.placeholders.notes') }}"
+    />
 
 <!-- Show in Nav -->
-<div class="form-group{{ $errors->has('notes') ? ' has-error' : '' }}">
-    <div class="col-md-9 col-md-offset-3">
-        <label class="form-control">
-            <input type="checkbox" value="1" name="show_in_nav" id="show_in_nav" {{ old('show_in_nav', $item->show_in_nav) == '1' ? ' checked="checked"' : '' }}> {{ trans('admin/statuslabels/table.show_in_nav') }}
-        </label>
-    </div>
-</div>
+    <x-form-row
+            :label="trans('admin/statuslabels/table.show_in_nav')"
+            :$item
+            :value_text="trans('general.yes')"
+            name="show_in_nav"
+            type="checkbox"
+            checkbox_value="1"
+    />
 
 <!-- Set as Default -->
-<div class="form-group{{ $errors->has('default_label') ? ' has-error' : '' }}">
-
-    <div class="col-md-9 col-md-offset-3">
-        <label class="form-control">
-            <input type="checkbox" value="1" name="default_label" id="default_label" {{ old('default_label', $item->default_label) == '1' ? ' checked="checked"' : '' }}>
-             {{ trans('admin/statuslabels/table.default_label') }}
-        </label>
-        <p class="help-block"> {{ trans('admin/statuslabels/table.default_label_help') }}</p>
-    </div>
-</div>
+    <x-form-row
+            :$item
+            :value_text="trans('general.yes')"
+            name="default_label"
+            checkbox_value="1"
+            type="checkbox"
+            help_text="{!! trans('admin/statuslabels/table.default_label_help') !!}"
+    />
 
 @stop
 

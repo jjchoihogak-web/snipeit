@@ -40,16 +40,16 @@
 
           <div class="col-md-8">
 
-          <!-- Name -->
-          <div class="form-group {{ $errors->has('name') ? ' has-error' : '' }}">
-            <label for="name" class="col-md-3 control-label">
-              {{ trans('admin/custom_fields/general.field_name') }}
-            </label>
-            <div class="col-md-8 required">
-                <input class="form-control" aria-label="name" name="name" type="text" required value="{{ old('name', $field->name) }}">
-                {!! $errors->first('name', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
-            </div>
-          </div>
+              <!-- Name -->
+              <div class="form-group {{ $errors->has('name') ? ' has-error' : '' }}">
+                  <label for="name" class="col-md-3 control-label">
+                      {{ trans('admin/custom_fields/general.field_name') }}
+                  </label>
+                  <div class="col-md-8 required">
+                      <input class="form-control" aria-label="name" name="name" type="text" required value="{{ old('name', $field->name) }}">
+                      {!! $errors->first('name', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
+                  </div>
+              </div>
 
           <!-- Element Type -->
           <div class="form-group {{ $errors->has('element') ? ' has-error' : '' }}">
