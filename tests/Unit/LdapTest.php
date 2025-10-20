@@ -86,7 +86,9 @@ class LdapTest extends TestCase
         $ldap_set_option = $this->getFunctionMock("App\\Models", "ldap_set_option");
         $ldap_set_option->expects($this->exactly(4));
 
-        $this->getFunctionMock("App\\Models", "ldap_bind")->expects($this->once())->willReturn(true);
+        $this->getFunctionMock("App\\Models", "ldap_bind")
+            ->expects($this->exactly(2))
+            ->willReturnOnConsecutiveCalls(true, true);
 
         $this->getFunctionMock("App\\Models", "ldap_search")->expects($this->once())->willReturn(true);
 
@@ -116,34 +118,56 @@ class LdapTest extends TestCase
         $ldap_set_option = $this->getFunctionMock("App\\Models", "ldap_set_option");
         $ldap_set_option->expects($this->exactly(4));
 
-        // note - we return FALSE first, to simulate a bad-bind, then TRUE the second time to simulate a successful admin bind
-        $this->getFunctionMock("App\\Models", "ldap_bind")->expects($this->exactly(2))->willReturn(false, true);
-
+        $this->getFunctionMock('App\\Models', 'ldap_bind')
+            ->expects($this->once())
+            ->willReturn(false);
+        $this->getFunctionMock('App\\Models', 'ldap_errno')
+            ->expects($this->once())
+            ->willReturn(49); // typical "invalid creds"
+        $this->getFunctionMock('App\\Models', 'ldap_error')
+            ->expects($this->once())
+            ->willReturn('Invalid credentials');
 //        $this->getFunctionMock("App\\Models","ldap_error")->expects($this->once())->willReturn("exception");
 
 
 //        $this->expectExceptionMessage("exception");
-        $results = Ldap::findAndBindUserLdap("username","password");
-        $this->assertFalse($results);
+        try {
+            Ldap::findAndBindUserLdap('username', 'password');
+            $this->fail('Expected exception not thrown');
+        } catch (\Exception $e) {
+            $this->assertSame(49, $e->getCode());
+        }
     }
 
+    /**
+     * @throws \Exception
+     */
     public function testFindAndBindCannotFindSelf()
     {
         $this->settings->enableLdap();
 
         $ldap_connect = $this->getFunctionMock("App\\Models", "ldap_connect");
+
         $ldap_connect->expects($this->once())->willReturn('hello');
 
         $ldap_set_option = $this->getFunctionMock("App\\Models", "ldap_set_option");
         $ldap_set_option->expects($this->exactly(4));
 
-        $this->getFunctionMock("App\\Models", "ldap_bind")->expects($this->once())->willReturn(true);
+        $this->getFunctionMock('App\\Models', 'ldap_bind')
+            ->expects($this->exactly(2))
+            ->willReturnOnConsecutiveCalls(true, true);
 
-        $this->getFunctionMock("App\\Models", "ldap_search")->expects($this->once())->willReturn(false);
+        $this->getFunctionMock('App\\Models', 'ldap_search')
+            ->expects($this->once())
+            ->willReturn(false);
 
-        $this->expectExceptionMessage("Could not search LDAP:");
-        $results = Ldap::findAndBindUserLdap("username","password");
-        $this->assertFalse($results);
+        $this->getFunctionMock('App\\Models', 'ldap_first_entry')->expects($this->never());
+        $this->getFunctionMock('App\\Models', 'ldap_get_attributes')->expects($this->never());
+
+        $this->getFunctionMock("App\\Models", "ldap_errno")->expects($this->never());
+        $this->getFunctionMock('App\\Models', 'ldap_error')->expects($this->never());
+
+        $this->assertFalse(Ldap::findAndBindUserLdap('username', 'password'));
     }
 
     //maybe should do an AD test as well?
@@ -153,6 +177,8 @@ class LdapTest extends TestCase
         $this->settings->enableLdap();
 
         $ldap_connect = $this->getFunctionMock("App\\Models", "ldap_connect");
+        $this->getFunctionMock("App\\Models", "ldap_errno")->expects($this->never());
+        $this->getFunctionMock("App\\Models", "ldap_error")->expects($this->never());
         $ldap_connect->expects($this->once())->willReturn('hello');
 
         $ldap_set_option = $this->getFunctionMock("App\\Models", "ldap_set_option");
@@ -165,7 +191,6 @@ class LdapTest extends TestCase
         $this->getFunctionMock("App\\Models", "ldap_parse_result")->expects($this->once())->willReturn(true);
 
         $this->getFunctionMock("App\\Models", "ldap_get_entries")->expects($this->once())->willReturn(["count" => 1]);
-
         $results = Ldap::findLdapUsers();
 
         $this->assertEqualsCanonicalizing(["count" => 1], $results);
