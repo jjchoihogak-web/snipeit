@@ -264,8 +264,9 @@ class CheckoutableListener
 
         $acceptance->qty = 1;
 
-        if (isset($event->checkoutable->checkout_qty)) {
-            $acceptance->qty = $event->checkoutable->checkout_qty;
+        // LicenseSeat doesn't have 'getLogQuantity'
+        if (method_exists($event->checkoutable, 'getLogQuantity') && $event->checkoutable->getLogQuantity()) {
+            $acceptance->qty = $event->checkoutable->getLogQuantity();
         }
 
         $category = $this->getCategoryFromCheckoutable($event->checkoutable);

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ActionType;
 use App\Helpers\Helper;
 use App\Helpers\StorageHelper;
 use App\Http\Controllers\Controller;
@@ -110,7 +111,10 @@ class UploadedFilesController extends Controller
             foreach ($request->file('file') as $file) {
                 $file_name = $request->handleFile(self::$map_storage_path[$object_type], self::$map_file_prefix[$object_type].'-'.$object->id, $file);
                 $files[] = $file_name;
-                $object->logUpload($file_name, $request->get('notes'));
+                //$object->logUpload($file_name, $request->get('notes'));
+                $object->setLogNote($request->get('notes'));
+                $object->setLogFileName($file_name);
+                $object->saveWithActionType(ActionType::Uploaded);
             }
 
             $files = Actionlog::select('action_logs.*')->where('action_type', '=', 'uploaded')
@@ -206,7 +210,8 @@ class UploadedFilesController extends Controller
                 Storage::delete(self::$map_storage_path[$object_type].'/'.$log->filename);
             }
             // Delete the record of the file
-            if ($log->logUploadDelete($object, $log->filename)) {
+            $object->setLogFilename($log->filename);
+            if ($object->saveWithActionType(ActionType::UploadDeleted)) {
                 return response()->json(Helper::formatStandardApiResponse('success', null, trans_choice('general.file_upload_status.delete.success', 1)), 200);
             }
 

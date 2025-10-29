@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use App\Http\Traits\UniqueUndeletedTrait;
+use App\Models\Asset;
+use App\Models\Setting;
+use App\Models\SnipeModel;
+use App\Models\Traits\Loggable;
 use App\Models\Traits\CompanyableTrait;
 use App\Models\Traits\HasUploads;
-use App\Models\Traits\Loggable;
 use App\Models\Traits\Searchable;
 use App\Presenters\Presentable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

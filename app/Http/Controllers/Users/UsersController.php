@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Users;
 
+use App\Enums\ActionType;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\DeleteUserRequest;
@@ -379,13 +380,6 @@ class UsersController extends Controller
             }
 
             if ($user->restore()) {
-                $logaction = new Actionlog();
-                $logaction->item_type = User::class;
-                $logaction->item_id = $user->id;
-                $logaction->created_at = date('Y-m-d H:i:s');
-                $logaction->created_by = auth()->id();
-                $logaction->logaction('restore');
-
                 // Redirect them to the deleted page if there are more, otherwise the section index
                 $deleted_users = User::onlyTrashed()->count();
                 if ($deleted_users > 0) {

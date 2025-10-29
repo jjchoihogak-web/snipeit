@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ActionType;
 use App\Actions\Manufacturers\DeleteManufacturerAction;
 use App\Exceptions\ItemStillHasAccessories;
 use App\Exceptions\ItemStillHasAssets;
@@ -213,12 +214,6 @@ class ManufacturersController extends Controller
             }
 
             if ($manufacturer->restore()) {
-                $logaction = new Actionlog();
-                $logaction->item_type = Manufacturer::class;
-                $logaction->item_id = $manufacturer->id;
-                $logaction->created_at = date('Y-m-d H:i:s');
-                $logaction->created_by = auth()->id();
-                $logaction->logaction('restore');
 
                 // Redirect them to the deleted page if there are more, otherwise the section index
                 $deleted_manufacturers = Manufacturer::onlyTrashed()->count();

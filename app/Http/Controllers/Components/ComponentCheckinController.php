@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Components;
 
+use App\Enums\ActionType;
 use App\Events\CheckoutableCheckedIn;
 use App\Events\ComponentCheckedIn;
 use App\Helpers\Helper;
@@ -95,6 +96,9 @@ class ComponentCheckinController extends Controller
             }
 
             $asset = Asset::find($component_assets->asset_id);
+            $component->setLogTarget($asset);
+            $component->setLogQuantity($request->input('checkin_qty'));
+            $component->saveWithActionType(ActionType::CheckinFrom);
 
             event(new CheckoutableCheckedIn($component, $asset, auth()->user(), $request->input('note'), Carbon::now()));
 

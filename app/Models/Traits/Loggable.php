@@ -2,6 +2,7 @@
 
 namespace App\Models\Traits;
 
+use App\Enums\ActionType;
 use App\Models\Actionlog;
 use App\Models\Asset;
 use App\Models\License;
@@ -10,6 +11,8 @@ use App\Models\Location;
 use App\Models\Setting;
 use App\Models\User;
 use App\Notifications\AuditNotification;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -19,11 +22,218 @@ trait Loggable
 {
     // an attribute for setting whether or not the item was imported
     public ?bool $imported = false;
+    private ?string $log_action = null;
+    private array $log_meta = [];
+    private ?Model $log_target = null;
+    private ?string $log_note = null;
+
+    private ?Location $log_location_override = null;
+    private ?string $log_filename = null;
+    private ?string $log_action_date = null;
+    private ?int $log_quantity = null;
+
+    //public static array $hide_changes = [];
+
+    public static function bootLoggable()
+    {
+        //these tiny methods just set up what the log message is going to be
+        // it looks like 'restoring' fires *BEFORE* 'updating' - so we need to handle that
+        static::restoring(function ($model) {
+            $model->setLogAction(ActionType::Restore);
+        });
+
+        static::updating(function ($model) {
+            // if we're doing a restore, this 'updating' hook fires *after* the restoring hook
+            // so we make sure not to overwrite the log_action
+            if (!$model->log_action) {
+                $model->setLogAction(ActionType::Update);
+            }
+        });
+
+        static::creating(function ($model) {
+            $model->setLogAction(ActionType::Create);
+        });
+
+        static::deleting(function ($model) {
+            if (self::class == \App\Models\User::class) { //TODO - can we maybe jam this into the delete method(s) in the controller instead?
+                $model->setLogTarget($model);
+            }
+            $model->setLogAction(ActionType::Delete);
+        });
+
+        // THIS sets up the transaction, and gets the 'diff' between the original for the model,
+        // and the way it's about to get saved to.
+        // note that this may run *BEFORE* the more specific events, above? I don't know why that is though.
+        // OPEN QUESTION - does this run on soft-delete? I don't know.
+        static::saving(function ($model) {
+            //possibly consider a "$this->saveWithoutTransaction" thing you can invoke?
+            // use "BEGIN" here?! TODO
+            $changed = [];
+
+            // something here with custom fields is needed? or will getRawOriginal et al just do that for us?
+            foreach ($model->getRawOriginal() as $key => $value) {
+                if ($model->getRawOriginal()[$key] != $model->getAttributes()[$key]) {
+                    $changed[$key]['old'] = $model->getRawOriginal()[$key];
+                    $changed[$key]['new'] = $model->getAttributes()[$key];
+
+                    if (property_exists($model, 'hidden') && in_array($key, $model->hidden)) {
+                        $changed[$key]['old'] = '*************';
+                        $changed[$key]['new'] = '*************';
+                    }
+                }
+            }
+
+            $model->setLogMeta($changed);
+        });
+
+        // THIS is the whole enchilada, the MAIN thing that you've got to do to make things work.
+        //if we've set everything up correctly, this should pretty much do everything we want, all in one place
+        static::saved(function ($model) {
+            if (!$model->log_action && !$model->log_meta) {
+                //nothing was changed, nothing was saved, nothing happened. So there should be no log message.
+                //TODO if we do the transaction thing!!!! (COMMIT?) (or, I dunno, maybe ROLLBACK?)
+                return;
+            }
+            if (!$model->log_action) {
+                throw new \Exception("Log Message was unset, but log_meta *does* exist - it's: " . print_r($model->log_meta, true));
+            }
+            $model->createLogEntry();
+            // DO COMMIT HERE? TODO (commit after save *and* logging?)
+        });
+        static::deleted(function ($model) {
+            $results = $model->createLogEntry(); //TODO - if we do commits up there, we should do them here too?
+        });
+        static::restored(function ($model) {
+            // TODO - is this already handled, are we double-logging?
+            //$model->createLogEntry(); //TODO - this is getting duplicative.
+        });
+
+    }
+
+    // and THIS is the main, primary logging system
+    // it *can* be called on its own, but in *general* you should let it trigger from the 'save'
+    private function createLogEntry(ActionType $log_action = null): bool
+    {
+        if ($log_action) {
+            $this->setLogAction($log_action);
+        }
+        $logAction = new Actionlog();
+        $logAction = $this->determineLogItemType($logAction); //TODO - inline this if it becomes the only usage?
+        $logAction->created_at = date('Y-m-d H:i:s');
+        $logAction->created_by = auth()->id();
+        if ($this->imported) {
+            $logAction->action_source = 'importer';
+        }
+        $logAction->log_meta = $this->log_meta ? json_encode($this->log_meta) : null;
+        if ($this->log_target) {
+            $logAction->target_type = $this->log_target::class;
+            $logAction->target_id = $this->log_target->id;
+        }
+        if (!is_null($this->log_note)) { // for legacy reasons we need to special-case writing '' as the log notes :/
+            $logAction->note = $this->log_note;
+        }
+        if ($this->log_location_override) { // TODO - this is a weird feature and we shouldn't need it.
+            $logAction->location_id = $this->log_location_override->id;
+        }
+        if ($this->log_filename) {
+            $logAction->filename = $this->log_filename;
+        }
+
+        $logAction->action_type = $this->log_action;
+        $logAction->remote_ip = request()->ip();
+        $logAction->user_agent = request()->header('User-Agent');
+        if ($this->log_action_date) {
+            $logAction->action_date = $this->log_action_date;
+        } else {
+            $logAction->action_date = Carbon::now();
+        }
+
+        //determine action source if we don't have one
+        if (!$logAction->action_source) {
+            if (((request()->header('content-type') && (request()->header('accept')) == 'application/json'))
+                && (starts_with(request()->header('authorization'), 'Bearer '))) {
+                // This is an API call
+
+                $logAction->action_source = 'api';
+            } else if (request()->filled('_token')) {
+                // This is probably NOT an API call
+                $logAction->action_source = 'gui';
+            } else {
+                $logAction->action_source = 'cli/unknown';
+            }
+        }
+
+        if ($logAction->save()) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    // PUBLIC SETTER METHODS for private values
+    public function setLogAction(ActionType $message)
+    {
+        $this->log_action = $message->value;
+    }
+
+    public function setLogMeta(array $changed)
+    {
+        $this->log_meta = $changed;
+    }
+
+    public function setLogTarget(Model $target)
+    {
+        $this->log_target = $target;
+    }
+
+    public function setLogNote(?string $note)
+    {
+        $this->log_note = $note;
+    }
+
+    public function setLogFilename(?string $filename)
+    {
+        $this->log_filename = $filename;
+    }
+
+    public function setLogActionDate(?string $date)
+    {
+        $this->log_action_date = $date;
+    }
+
+    public function setLogQuantity(?int $quantity)
+    {
+        $this->log_quantity = $quantity;
+    }
+
+    public function setLogLocationOverride(?Location $location)
+    {
+        $this->log_location_override = $location;
+    }
+
+    // PUBLIC GETTERS WHEN NEEDED
+
+    public function getLogTarget()
+    {
+        return $this->log_target;
+    }
+
+    public function getLogQuantity()
+    {
+        return $this->log_quantity;
+    }
+
+    // Shorthand method for saving with an action-type
+    public function saveWithActionType(ActionType $logAction): bool
+    {
+        $this->setLogAction($logAction);
+        return $this->save();
+    }
 
     /**
-     * @author Daniel Meltzer <dmeltzer.devel@gmail.com>
-     * @since  [v3.4]
      * @return \App\Models\Actionlog
+     * @since [v3.4]
+     * @author  Daniel Meltzer <dmeltzer.devel@gmail.com>
      */
     public function log()
     {
@@ -33,94 +243,6 @@ trait Loggable
     public function setImported(bool $bool): void
     {
         $this->imported = $bool;
-    }
-
-    /**
-     * @author Daniel Meltzer <dmeltzer.devel@gmail.com>
-     * @since  [v3.4]
-     * @return \App\Models\Actionlog
-     */
-    public function logCheckout($note, $target, $action_date = null, $originalValues = [])
-    {
-
-        $log = new Actionlog;
-
-        $fields_array = [];
-
-        $log = $this->determineLogItemType($log);
-        if (auth()->user()) {
-            $log->created_by = auth()->id();
-        }
-
-        if (! isset($target)) {
-            throw new \Exception('All checkout logs require a target.');
-
-            return;
-        }
-
-        if (! isset($target->id)) {
-            throw new \Exception('That target seems invalid (no target ID available).');
-
-            return;
-        }
-
-        $log->target_type = get_class($target);
-        $log->target_id = $target->id;
-
-
-        // Figure out what the target is
-        if ($log->target_type == Location::class) {
-            $log->location_id = $target->id;
-        } elseif ($log->target_type == Asset::class) {
-            $log->location_id = $target->location_id;
-        } else {
-            $log->location_id = $target->location_id;
-        }
-
-        if (static::class == Asset::class) {
-            if ($asset = Asset::find($log->item_id)) {
-
-                // add the custom fields that were changed
-                if ($asset->model->fieldset) {
-                    $fields_array = [];
-                    foreach ($asset->model->fieldset->fields as $field) {
-                        if ($field->display_checkout == 1) {
-                            $fields_array[$field->db_column] = $asset->{$field->db_column};
-                        }
-                    }
-                }
-            }
-        }
-
-        $log->note = $note;
-        $log->action_date = $action_date;
-
-
-        $changed = [];
-        $array_to_flip = array_keys($fields_array);
-        $array_to_flip = array_merge($array_to_flip, ['name','status_id','location_id','expected_checkin']);
-        $originalValues = array_intersect_key($originalValues, array_flip($array_to_flip));
-
-
-        foreach ($originalValues as $key => $value) {
-            // TODO - action_date isn't a valid attribute of any first-class object, so we might want to remove this?
-            if ($key == 'action_date' && $value != $action_date) {
-                $changed[$key]['old'] = $value;
-                $changed[$key]['new'] = is_string($action_date) ? $action_date : $action_date->format('Y-m-d H:i:s');
-            } elseif (array_key_exists($key, $this->getAttributes()) && $value != $this->getAttributes()[$key]) {
-                $changed[$key]['old'] = $value;
-                $changed[$key]['new'] = $this->getAttributes()[$key];
-            }
-            // NOTE - if the attribute exists in $originalValues, but *not* in ->getAttributes(), it isn't added to $changed
-        }
-
-        if (!empty($changed)) {
-            $log->log_meta = json_encode($changed);
-        }
-
-        $log->logaction('checkout');
-
-        return $log;
     }
 
     /**
@@ -141,222 +263,13 @@ trait Loggable
     }
 
     /**
-     * @author Daniel Meltzer <dmeltzer.devel@gmail.com>
-     * @since  [v3.4]
-     * @return \App\Models\Actionlog
-     */
-    public function logCheckin($target, $note, $action_date = null, $originalValues = [])
-    {
-        $log = new Actionlog;
-
-        $fields_array = [];
-
-        if($target != null) {
-            $log->target_type = get_class($target);
-            $log->target_id = $target->id;
-
-        }
-
-        if (static::class == LicenseSeat::class) {
-            $log->item_type = License::class;
-            $log->item_id = $this->license_id;
-        } else {
-            $log->item_type = static::class;
-            $log->item_id = $this->id;
-
-            if (static::class == Asset::class) {
-                if ($asset = Asset::find($log->item_id)) {
-                    $asset->increment('checkin_counter', 1);
-
-                    // add the custom fields that were changed
-                    if ($asset->model->fieldset) {
-                        $fields_array = [];
-                        foreach ($asset->model->fieldset->fields as $field) {
-                            if ($field->display_checkin == 1) {
-                                $fields_array[$field->db_column] = $asset->{$field->db_column};
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        $log->location_id = null;
-        $log->note = $note;
-        $log->action_date = $action_date;
-
-        if (!$action_date) {
-            $log->action_date = date('Y-m-d H:i:s');
-        }
-
-        if (auth()->user()) {
-            $log->created_by = auth()->id();
-        }
-
-        $changed = [];
-
-        $array_to_flip = array_keys($fields_array);
-        $array_to_flip = array_merge($array_to_flip, ['name','status_id','location_id','expected_checkin']);
-
-        $originalValues = array_intersect_key($originalValues, array_flip($array_to_flip));
-
-        foreach ($originalValues as $key => $value) {
-
-            if ($key == 'action_date' && $value != $action_date) {
-                $changed[$key]['old'] = $value;
-                $changed[$key]['new'] = is_string($action_date) ? $action_date : $action_date->format('Y-m-d H:i:s');
-            } elseif ($value != $this->getAttributes()[$key]) {
-                $changed[$key]['old'] = $value;
-                $changed[$key]['new'] = $this->getAttributes()[$key];
-            }
-        }
-
-        if (!empty($changed)) {
-            $log->log_meta = json_encode($changed);
-        }
-
-        $log->logaction('checkin from');
-
-        return $log;
-    }
-
-    /**
-     * @author A. Gianotto <snipe@snipe.net>
-     * @since  [v4.0]
-     * @return \App\Models\Actionlog
-     */
-    public function logAudit($note, $location_id, $filename = null, $originalValues = [])
-    {
-
-        $log = new Actionlog;
-
-        if (static::class == Asset::class) {
-            if ($asset = Asset::find($log->item_id)) {
-                // add the custom fields that were changed
-                if ($asset->model->fieldset) {
-                    $fields_array = [];
-                    foreach ($asset->model->fieldset->fields as $field) {
-                        if ($field->display_audit == 1) {
-                            $fields_array[$field->db_column] = $asset->{$field->db_column};
-                        }
-                    }
-                }
-            }
-        }
-
-        $changed = [];
-
-        unset($originalValues['updated_at'], $originalValues['last_audit_date']);
-        foreach ($originalValues as $key => $value) {
-
-            if ($value != $this->getAttributes()[$key]) {
-                $changed[$key]['old'] = $value;
-                $changed[$key]['new'] = $this->getAttributes()[$key];
-            }
-        }
-
-        if (!empty($changed)) {
-            $log->log_meta = json_encode($changed);
-        }
-
-
-        $location = Location::find($location_id);
-        if (static::class == LicenseSeat::class) {
-            $log->item_type = License::class;
-            $log->item_id = $this->license_id;
-        } else {
-            $log->item_type = static::class;
-            $log->item_id = $this->id;
-        }
-        $log->location_id = ($location_id) ? $location_id : null;
-        $log->note = $note;
-        $log->created_by = auth()->id();
-        $log->filename = $filename;
-        $log->action_date = date('Y-m-d H:i:s');
-        $log->logaction('audit');
-
-        $params = [
-            'item' => $log->item,
-            'filename' => $log->filename,
-            'admin' => $log->adminuser,
-            'location' => ($location) ? $location->name : '',
-            'note' => $note,
-        ];
-        if(Setting::getSettings()->webhook_selected === 'microsoft' && Str::contains(Setting::getSettings()->webhook_endpoint, 'workflows')) {
-            $message = AuditNotification::toMicrosoftTeams($params);
-            $notification = new TeamsNotification(Setting::getSettings()->webhook_endpoint);
-            $notification->success()->sendMessage($message[0], $message[1]);
-        }
-        else {
-            Setting::getSettings()->notify(new AuditNotification($params));
-        }
-
-        return $log;
-    }
-
-    /**
-     * @author Daniel Meltzer <dmeltzer.devel@gmail.com>
-     * @since  [v3.5]
-     * @return \App\Models\Actionlog
-     */
-    public function logCreate($note = null)
-    {
-        $created_by = -1;
-        if (auth()->user()) {
-            $created_by = auth()->id();
-        }
-        $log = new Actionlog;
-        if (static::class == LicenseSeat::class) {
-            $log->item_type = License::class;
-            $log->item_id = $this->license_id;
-        } else {
-            $log->item_type = static::class;
-            $log->item_id = $this->id;
-        }
-        $log->location_id = null;
-        $log->action_date = date('Y-m-d H:i:s');
-        $log->note = $note;
-        $log->created_by = $created_by;
-        $log->logaction('create');
-        $log->save();
-
-        return $log;
-    }
-
-    /**
-     * @author Daniel Meltzer <dmeltzer.devel@gmail.com>
-     * @since  [v3.4]
-     * @return \App\Models\Actionlog
-     */
-    public function logUpload($filename, $note)
-    {
-        $log = new Actionlog;
-        if (static::class == LicenseSeat::class) {
-            $log->item_type = License::class;
-            $log->item_id = $this->license_id;
-        } else {
-            $log->item_type = static::class;
-            $log->item_id = $this->id;
-        }
-        $log->created_by = auth()->id();
-        $log->note = $note;
-        $log->target_id = null;
-        $log->created_at = date('Y-m-d H:i:s');
-        $log->action_date = date('Y-m-d H:i:s');
-        $log->filename = $filename;
-        $log->logaction('uploaded');
-
-        return $log;
-    }
-
-    /**
      * Get latest signature from a specific user
      *
      * This just makes the print view a bit cleaner
      * Returns the latest acceptance ActionLog that contains a signature
      * from $user or null if there is none
      *
-     * @param  User $user
+     * @param User $user
      * @return null|Actionlog
      **/
     public function getLatestSignedAcceptance(User $user)

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ActionType;
 use App\Helpers\Helper;
 use App\Http\Controllers\Controller;
 use App\Http\Transformers\LicenseSeatsTransformer;
@@ -128,7 +129,7 @@ class LicenseSeatsController extends Controller
             // nothing to update
             return response()->json(Helper::formatStandardApiResponse('success', $licenseSeat, trans('admin/licenses/message.update.success')));
         }
-        if( $touched && $licenseSeat->unreassignable_seat) {
+        if ($touched && $licenseSeat->unreassignable_seat) {
             return response()->json(Helper::formatStandardApiResponse('error', null, trans('admin/licenses/message.checkout.unavailable')));
         }
         // the logging functions expect only one "target". if both asset and user are present in the request,
@@ -144,20 +145,17 @@ class LicenseSeatsController extends Controller
             return response()->json(Helper::formatStandardApiResponse('error', null, 'Target not found'));
         }
 
-        if ($licenseSeat->save()) {
-
-            if ($is_checkin) {
-                if(!$licenseSeat->license->reassignable){
-                    $licenseSeat->unreassignable_seat = true;
-                    $licenseSeat->save();
-                }
-                $licenseSeat->logCheckin($target, $licenseSeat->notes);
-
-                return response()->json(Helper::formatStandardApiResponse('success', $licenseSeat, trans('admin/licenses/message.update.success')));
+        $license->setLogTarget($target);
+        $license->setLogNote($request->input('notes'));
+        if ($is_checkin) {
+            if (!$licenseSeat->license->reassignable) {
+                $licenseSeat->unreassignable_seat = true;
             }
-
-            // in this case, relevant fields are touched but it's not a checkin operation. so it must be a checkout operation.
-            $licenseSeat->logCheckout($request->input('notes'), $target);
+            $license->setLogAction(ActionType::CheckinFrom);
+        } else {
+            $license->setLogAction(ActionType::Checkout);
+        }
+        if ($licenseSeat->save() && $license->save()) {
 
             return response()->json(Helper::formatStandardApiResponse('success', $licenseSeat, trans('admin/licenses/message.update.success')));
         }

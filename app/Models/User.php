@@ -3,10 +3,10 @@
 namespace App\Models;
 
 use App\Http\Traits\UniqueUndeletedTrait;
-use App\Models\Traits\CompanyableTrait;
-use App\Models\Traits\HasUploads;
 use App\Models\Traits\Loggable;
 use App\Models\Traits\Searchable;
+use App\Models\Traits\CompanyableTrait;
+use App\Models\Traits\HasUploads;
 use App\Presenters\Presentable;
 use App\Presenters\UserPresenter;
 use Illuminate\Auth\Authenticatable;
@@ -40,6 +40,9 @@ class User extends SnipeModel implements AuthenticatableContract, AuthorizableCo
     use Notifiable;
     use Presentable;
     use Searchable;
+    use Loggable;
+
+    // that 'use Loggable' thing is NEW!
 
     protected $hidden = [
         'password',
@@ -888,8 +891,8 @@ class User extends SnipeModel implements AuthenticatableContract, AuthorizableCo
     /**
      * Query builder scope to search on text filters for complex Bootstrap Tables API
      *
-     * @param \Illuminate\Database\Query\Builder $query  Query builder instance
-     * @param text                               $filter JSON array of search keys and terms
+     * @param \Illuminate\Database\Query\Builder $query Query builder instance
+     * @param text $filter JSON array of search keys and terms
      *
      * @return \Illuminate\Database\Query\Builder          Modified query builder
      */

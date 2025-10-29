@@ -21,8 +21,6 @@ class Actionlog extends SnipeModel
     use CompanyableTrait;
     use HasFactory;
 
-    // This is to manually set the source (via setActionSource()) for determineActionSource()
-    protected ?string $source = null;
     protected $with = ['adminuser'];
 
     protected $presenter = \App\Presenters\ActionlogPresenter::class;
@@ -329,27 +327,6 @@ class Actionlog extends SnipeModel
     }
 
     /**
-     * Saves the log record with the action type
-     *
-     * @author [A. Gianotto] [<snipe@snipe.net>]
-     * @since  [v3.0]
-     * @return bool
-     */
-    public function logaction($actiontype)
-    {
-        $this->action_type = $actiontype;
-        $this->remote_ip =  request()->ip();
-        $this->user_agent = request()->header('User-Agent');
-        $this->action_source = $this->determineActionSource();
-
-        if ($this->save()) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    /**
      * Calculate the number of days until the next audit
      *
      * @author [A. Gianotto] [<snipe@snipe.net>]
@@ -411,58 +388,7 @@ class Actionlog extends SnipeModel
             ->orderBy('created_at', 'asc')
             ->get();
     }
-
-    /**
-     * Determines what the type of request is so we can log it to the action_log
-     *
-     * @author A. Gianotto <snipe@snipe.net>
-     * @since  v6.3.0
-     * @return string
-     */
-    public function determineActionSource(): string
-    {
-        // This is a manually set source
-        if($this->source) {
-            return $this->source;
-        }
-
-        // This is an API call
-        if (((request()->header('content-type') && (request()->header('accept'))=='application/json'))
-            && (starts_with(request()->header('authorization'), 'Bearer '))
-        ) {
-            return 'api';
-        }
-
-        // This is probably NOT an API call
-        if (request()->filled('_token')) {
-            return 'gui';
-        }
-
-        // We're not sure, probably cli
-        return 'cli/unknown';
-
-    }
-
-
-    /**
-     * @author  Godfrey Martinez
-     * @since [v8.0.4]
-     * @return \App\Models\Actionlog
-     */
-    public function logUploadDelete($object, $filename)
-    {
-        $log = new Actionlog;
-        $log->item_type = $object instanceof SnipeModel ? get_class($object) : $object;
-        $log->item_id = $object->id;
-        $log->created_by = auth()->id();
-        $log->target_id = null;
-        $log->filename = $filename;
-        $log->created_at = date('Y-m-d H:i:s');
-        $log->logaction('upload deleted');
-
-        return $log;
-    }
-
+    
     public function uploads_file_url()
     {
 

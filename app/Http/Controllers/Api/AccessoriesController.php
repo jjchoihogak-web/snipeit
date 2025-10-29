@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\ActionType;
 use App\Events\CheckoutableCheckedOut;
 use App\Helpers\Helper;
 use App\Http\Controllers\CheckInOutRequest;
@@ -298,9 +299,9 @@ class AccessoriesController extends Controller
     {
         $this->authorize('checkout', $accessory);
         $target = $this->determineCheckoutTarget();
-        $accessory->checkout_qty = $request->input('checkout_qty', 1);
+        $checkout_qty = $request->input('checkout_qty', 1);
 
-        for ($i = 0; $i < $accessory->checkout_qty; $i++) {
+        for ($i = 0; $i < $checkout_qty; $i++) {
 
             $accessory_checkout = new AccessoryCheckout([
                 'accessory_id' => $accessory->id,
@@ -323,6 +324,11 @@ class AccessoriesController extends Controller
                 'pivot' => $accessory_checkout->id,
             ];
         }
+
+        $accessory->setLogTarget($target);
+        $accessory->setLogNote($request->input('note'));
+        $accessory->setLogQuantity($checkout_qty);
+        $accessory->saveWithActionType(ActionType::Checkout);
 
         // Set this value to be able to pass the qty through to the event
         event(new CheckoutableCheckedOut($accessory, $target, auth()->user(), $request->input('note')));
@@ -351,7 +357,9 @@ class AccessoriesController extends Controller
         $accessory = Accessory::find($accessory_checkout->accessory_id);
         $this->authorize('checkin', $accessory);
 
-        $accessory->logCheckin(User::find($accessory_checkout->assigned_to), $request->input('note'));
+        $accessory->setLogTarget(User::find($accessory_checkout->assigned_to));
+        $accessory->setLogNote($request->input('note'));
+        $accessory->saveWithActionType(ActionType::CheckinFrom);
 
         // Was the accessory updated?
         if ($accessory_checkout->delete()) {

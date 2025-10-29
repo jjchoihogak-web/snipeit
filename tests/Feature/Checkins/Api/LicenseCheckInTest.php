@@ -4,6 +4,7 @@ namespace Tests\Feature\Checkins\Api;
 use App\Models\License;
 use App\Models\LicenseSeat;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class LicenseCheckInTest extends TestCase {
@@ -14,7 +15,6 @@ class LicenseCheckInTest extends TestCase {
 
         $license = License::factory()->create();
         $oldUser = User::factory()->create();
-
         $licenseSeat = LicenseSeat::factory()->for($license)->create([
             'assigned_to' => $oldUser->id,
             'notes'       => 'Previously checked out',

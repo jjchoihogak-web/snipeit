@@ -2,6 +2,8 @@
 
 namespace App\Presenters;
 
+use App\Enums\ActionType;
+
 /**
  * Class CompanyPresenter
  */
@@ -102,7 +104,7 @@ class ActionlogPresenter extends Presenter
             return 'fa-solid fa-rotate-right';
         }
 
-        if ($this->action_type == 'note_added') {
+        if ($this->action_type == ActionType::NoteAdded->value) {
             return 'fas fa-sticky-note';
         }
 

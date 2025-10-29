@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Components;
 
+use App\Enums\ActionType;
 use App\Events\CheckoutableCheckedOut;
 use App\Events\ComponentCheckedOut;
 use App\Helpers\Helper;
@@ -102,18 +103,19 @@ class ComponentCheckoutController extends Controller
             return redirect()->route('components.checkout.show', $componentId)->with('error', trans('general.error_user_company'));
         }
 
-        $component->checkout_qty = $request->input('assigned_qty');
+        $component->setLogQuantity($request->input('assigned_qty'));
 
         // Update the component data
-        $component->asset_id = $request->input('asset_id');
         $component->assets()->attach($component->id, [
             'component_id' => $component->id,
             'created_by' => auth()->user()->id,
             'created_at' => date('Y-m-d H:i:s'),
-            'assigned_qty' => $component->checkout_qty,
+            'assigned_qty' => $component->getLogQuantity(),
             'asset_id' => $request->input('asset_id'),
             'note' => $request->input('note'),
         ]);
+        $component->setLogTarget($asset);
+        $component->saveWithActionType(ActionType::Checkout);
 
         event(new CheckoutableCheckedOut($component, $asset, auth()->user(), $request->input('note')));
 

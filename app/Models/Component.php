@@ -2,10 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Traits\Loggable;
 use App\Helpers\Helper;
 use App\Models\Traits\CompanyableTrait;
 use App\Models\Traits\HasUploads;
-use App\Models\Traits\Loggable;
 use App\Models\Traits\Searchable;
 use App\Presenters\Presentable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
