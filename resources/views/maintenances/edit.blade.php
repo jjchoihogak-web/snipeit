@@ -11,196 +11,204 @@
 @stop
 
 
-@section('header_right')
-<a href="{{ URL::previous() }}" class="btn btn-primary pull-right">
-  {{ trans('general.back') }}</a>
-@stop
-
-
 {{-- Page content --}}
 @section('content')
 
 <div class="row">
-  <div class="col-md-9">
-    @if ($item->id)
-      <form class="form-horizontal" method="post" action="{{ route('maintenances.update', $item->id) }}" autocomplete="off" enctype="multipart/form-data">
-      {{ method_field('PUT') }}
-    @else
-      <form class="form-horizontal" method="post" action="{{ route('maintenances.store') }}" autocomplete="off" enctype="multipart/form-data">
-    @endif
-    <!-- CSRF Token -->
-    {{ csrf_field() }}
 
-    <div class="box box-default">
 
+  <!-- Initiate form component -->
+  <x-form :$item update_route="maintenances.update" create_route="maintenances.store">
+
+      <!-- Start box component -->
+      <x-box :$item header_icon="maintenances">
+
+        <!-- This is an existing maintenance -->
         @if ($item->id)
-          <div class="box-header with-border">
-            <h2 class="box-title">
-              {{ $item->title }}
-            </h2>
-          </div><!-- /.box-header -->
-        @endif
 
-      <div class="box-body">
+          @if ($item->asset)
+              <x-form-row name="asset">
+                  <x-form-label>{{ trans('general.asset') }}</x-form-label>
+                  <x-form-input>
+                      <x-input.static>
+                            {{ $item->asset->display_name }}
+                      </x-input.static>
+                  </x-form-input>
+              </x-form-row>
 
-        @include ('partials.forms.edit.name', ['translated_name' => trans('general.name'), 'required' => 'true'])
+              @if ($item->asset->company)
+                  <x-form-row name="company">
+                      <x-form-label>{{ trans('general.company') }}</x-form-label>
+                      <x-form-input>
+                          <x-input.static>
+                              {{ $item->asset->company->display_name }}
+                          </x-input.static>
+                      </x-form-input>
+                  </x-form-row>
 
-        <!-- This is a new maintenance -->
-        @if (!$item->id)
+              @endif
 
+              @if ($item->asset->location)
+                  <x-form-row name="location">
+                      <x-form-label>
+                          {{ trans('general.location') }}
+                      </x-form-label>
+                      <x-form-input>
+                          <x-input.static>
+                              {{ $item->asset->location->display_name }}
+                          </x-input.static>
+                      </x-form-input>
+                  </x-form-row>
+              @endif
 
-          @include ('partials.forms.edit.asset-select', [
-            'translated_name' => trans('general.assets'),
-            'fieldname' => 'selected_assets[]',
-            'multiple' => true,
-            'required' => true,
-            'select_id' => 'assigned_assets_select',
-            'asset_selector_div_id' => 'assets_for_maintenance_div',
-            'asset_ids' => $item->id ? $item->asset()->pluck('id')->toArray() : old('selected_assets'),
-            'asset_id' => $item->id ? $item->asset()->pluck('id')->toArray() : null
-          ])
-        @else
-
-          @if ($item->asset->company)
-            <div class="form-group">
-              <label for="company" class="control-label col-md-3">
-                {{ trans('general.company') }}
-              </label>
-
-              <div class="col-md-9">
-                <p class="form-control-static">
-                  {{  $item->asset->company->name }}
-                </p>
-              </div>
-            </div>
           @endif
 
-            <div class="form-group">
-              <label for="asset" class="control-label col-md-3">
-                {{ trans('general.asset') }}
-              </label>
-
-              <div class="col-md-9">
-                <p class="form-control-static">
-                  {{ $item->asset ? $item->asset->present()->fullName : '' }}
-                </p>
-              </div>
-            </div>
-
-            @if ($item->asset->location)
-              <div class="form-group">
-                <label for="location" class="control-label col-md-3">
-                  {{ trans('general.location') }}
-                </label>
-
-                <div class="col-md-9">
-                  <p class="form-control-static">
-                    {{ $item->asset->location->name }}
-                  </p>
-                </div>
-              </div>
-            @endif
-
         @endif
 
+          <!-- Name -->
+          <x-form-row name="name">
+              <x-form-label>{{ trans('general.name') }}</x-form-label>
+              <x-form-input>
+                  <x-input.text
+                      required="true"
+                      :value="old('name', $item->name)"
+                  />
+              </x-form-input>
+          </x-form-row>
 
-        @include ('partials.forms.edit.maintenance_type')
+         @if (!$item->id)
+          <!-- Assets (multiple select for new maintenance) -->
+          <x-form-row name="selected_assets[]">
+                  <x-form-label>{{ trans('general.assets') }}</x-form-label>
+                  <x-form-input>
+                      <x-input.select2-ajax
+                          :item="$item->id ? $item->asset()->pluck('id')->toArray() : old('selected_assets')"
+                          item_model="\App\Models\Asset"
+                          :required="Helper::checkIfRequired($item, 'asset_id')"
+                          multiple="true"
+                          data_endpoint="hardware"
+                          :selected="old('selected_assets[]', request('asset_id'))"
+                          :data_placeholder="trans('general.select_asset')"
+                      />
+                  </x-form-input>
+          </x-form-row>
+         @endif
 
-        <!-- Start Date -->
-        <div class="form-group {{ $errors->has('start_date') ? ' has-error' : '' }}">
-          <label for="start_date" class="col-md-3 control-label">
-            {{ trans('admin/maintenances/form.start_date') }}
-          </label>
-
-          <div class="col-md-4">
-            <x-input.datepicker
-                    name="start_date"
-                    :value="old('start_date', $item->start_date)"
-                    placeholder="{{ trans('general.select_date') }}"
-                    required="{{ Helper::checkIfRequired($item, 'start_date') }}"
-            />
-            {!! $errors->first('start_date', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
-          </div>
-        </div>
-
-
-
-        <!-- Completion Date -->
-        <div class="form-group {{ $errors->has('completion_date') ? ' has-error' : '' }}">
-          <label for="start_date" class="col-md-3 control-label">{{ trans('admin/maintenances/form.completion_date') }}</label>
-
-          <div class="input-group col-md-4">
-            <x-input.datepicker
-                    name="completion_date"
-                    :value="old('start_date', $item->completion_date)"
-                    placeholder="{{ trans('general.select_date') }}"
-                    required="Helper::checkIfRequired($item, 'completion_date')"
-            />
-            {!! $errors->first('completion_date', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
-          </div>
-        </div>
-
-        @include ('partials.forms.edit.supplier-select', ['translated_name' => trans('general.supplier'), 'fieldname' => 'supplier_id'])
+        <!-- Maintenance Type -->
+          <x-form-row name="asset_maintenance_type">
+              <x-form-label>{{ trans('admin/asset_maintenances/form.asset_maintenance_type') }}</x-form-label>
+              <x-form-input>
+                  <x-input.select
+                      :options="$maintenanceType"
+                      :selected="old('asset_maintenance_type', $item->asset_maintenance_type)"
+                      :required="Helper::checkIfRequired($item, 'asset_maintenance_type')"
+                      data-placeholder="{{ trans('admin/maintenances/form.select_type')}}"
+                      includeEmpty="true"
+                      style="width:100%;"
+                  />
+              </x-form-input>
+          </x-form-row>
 
 
-        <!-- Warranty -->
+        <!--- Start Date -->
+          <x-form-row name="start_date">
+                  <x-form-label>{{ trans('admin/maintenances/form.start_date') }}</x-form-label>
+                  <x-form-input class="col-md-5">
+                      <x-input.datepicker :value="old('start_date', $item->start_date)" required="true" />
+                  </x-form-input>
+          </x-form-row>
+
+
+        <!--- Completion Date -->
+          <x-form-row name="completion_date">
+                  <x-form-label>{{ trans('admin/maintenances/form.completion_date') }}</x-form-label>
+                  <x-form-input class="col-md-5">
+                      <x-input.datepicker :value="old('completion_date', $item->completion_date)"
+                      />
+                  </x-form-input>
+          </x-form-row>
+
+          <!-- Cost -->
+          <x-form-row name="cost">
+              <x-form-label>{{ trans('admin/maintenances/form.cost') }}</x-form-label>
+              <x-form-input class="col-md-5">
+                  <x-input.text
+                          type="number"
+                          :input_group_text="$snipeSettings->default_currency"
+                          :value="old('cost', $item->cost)"
+                          input_group_addon="left"
+                          input_max="99999999999999999.000"
+                          input_min="0"
+                          input_min="0.00"
+                          input_step="0.001"
+                          maxlength="25"
+                  />
+              </x-form-input>
+          </x-form-row>
+
+
+        <!-- URL -->
+          <x-form-row name="url">
+              <x-form-label>{{ trans('general.url') }}</x-form-label>
+              <x-form-input>
+                  <x-input.text
+                          name="url"
+                          type="url"
+                          :value="old('url', $item->url)"
+                          input_icon="link"
+                          input_group_addon="left"
+                          placeholder="https://example.com"
+                  />
+              </x-form-input>
+          </x-form-row>
+
+        <!-- Supplier -->
+          <x-form-row name="supplier_id">
+
+                  <x-form-label>{{ trans('general.supplier') }}</x-form-label>
+
+                  <x-form-input>
+                      <x-input.select2-ajax
+                              item="$item->supplier"
+                              item_model="\App\Models\Supplier"
+                              name="supplier_id"
+                              :selected="old('supplier_id', $item->supplier_id)"
+                              data_endpoint="suppliers"
+                              :data_placeholder="trans('general.select_supplier')"
+                      />
+                  </x-form-input>
+          </x-form-row>
+
+        <!-- Warranty? -->
         <div class="form-group">
           <div class="col-sm-offset-3 col-sm-9">
               <label class="form-control">
-                <input type="checkbox" value="1" name="is_warranty" id="is_warranty" {{ old('is_warranty', $item->is_warranty) == '1' ? ' checked="checked"' : '' }}>
+                <input type="checkbox" value="1" name="is_warranty" id="is_warranty" @checked(old('is_warranty', $item->is_warranty))>
                 {{ trans('admin/maintenances/form.is_warranty') }}
               </label>
           </div>
         </div>
 
 
-        <!-- Asset Maintenance Cost -->
-        <div class="form-group {{ $errors->has('cost') ? ' has-error' : '' }}">
-          <label for="cost" class="col-md-3 control-label">{{ trans('admin/maintenances/form.cost') }}</label>
-          <div class="col-md-3 text-right">
-            <div class="input-group">
-              <span class="input-group-addon">
-                @if (($item->asset) && ($item->asset->location) && ($item->asset->location->currency!=''))
-                  {{ $item->asset->location->currency }}
-                @else
-                  {{ $snipeSettings->default_currency }}
-                @endif
-              </span>
-              <input class="form-control" type="number" name="cost" min="0.00" max="99999999999999999.000" step="0.001" aria-label="cost" id="cost" value="{{ old('cost', $item->cost) }}" maxlength="25" />
-              {!! $errors->first('cost', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
-            </div>
-          </div>
-        </div>
-
-        <div class="form-group {{ $errors->has('url') ? ' has-error' : '' }}">
-          <label for="url" class="col-md-3 control-label">{{ trans('general.url') }}</label>
-          <div class="col-md-7">
-            <input class="form-control" name="url" type="url" id="url" value="{{ old('url', $item->url) }}" placeholder="https://example.com">
-            {!! $errors->first('url', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
-          </div>
-        </div>
-
-
         @include ('partials.forms.edit.image-upload', ['image_path' => app('maintenances_path')])
 
-
         <!-- Notes -->
-        <div class="form-group {{ $errors->has('notes') ? ' has-error' : '' }}">
-          <label for="notes" class="col-md-3 control-label">{{ trans('admin/maintenances/form.notes') }}</label>
-          <div class="col-md-7">
-            <textarea class="col-md-6 form-control" id="notes" name="notes">{{ old('notes', $item->notes) }}</textarea>
-            <p class="help-block">{!! trans('general.markdown') !!}</p>
-            {!! $errors->first('notes', '<span class="alert-msg" aria-hidden="true"><i class="fas fa-times" aria-hidden="true"></i> :message</span>') !!}
-          </div>
-        </div>
-      </div> <!-- .box-body -->
+        <x-form-row name="notes">
+            <x-form-label>{{ trans('general.notes') }}</x-form-label>
+            <x-form-input>
+              <x-input.textarea
+                :value="old('notes', $item->notes)"
+                placeholder="{{ trans('general.placeholders.notes') }}"
+              />
+            </x-form-input>
+        </x-form-row>
 
-      <div class="box-footer text-right">
-        <button type="submit" class="btn btn-success"><x-icon type="checkmark" /> {{ trans('general.save') }}</button>
-      </div>
-    </div> <!-- .box-default -->
-    </form>
-  </div>
+
+
+        <!-- End box component -->
+  </x-box>
+    <!-- Start form component -->
+</x-form>
+
 </div>
-
 @stop
