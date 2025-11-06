@@ -33,6 +33,7 @@ use App\Notifications\CheckoutConsumableNotification;
 use App\Notifications\CheckoutLicenseSeatNotification;
 use GuzzleHttp\Exception\ClientException;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Context;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Notification;
 use Exception;
@@ -427,12 +428,19 @@ class CheckoutableListener
 
     private function shouldSendCheckoutEmailToUser(Model $checkoutable): bool
     {
+        // @todo: update comment
         /**
-         * Send an email if any of the following conditions are met:
+         * Send an email if we didn't get here from a bulk checkout
+         * and any of the following conditions are met:
          * 1. The asset requires acceptance
          * 2. The item has a EULA
          * 3. The item should send an email at check-in/check-out
          */
+
+        if (Context::get('action') === 'bulk_asset_checkout') {
+            // @todo: maybe we should see if there is only one asset being checked out and allow this to proceed if it is?
+            return false;
+        }
 
         if ($checkoutable->requireAcceptance()) {
             return true;
@@ -451,6 +459,10 @@ class CheckoutableListener
 
     private function shouldSendEmailToAlertAddress($acceptance = null): bool
     {
+        if (Context::get('action') === 'bulk_asset_checkout') {
+            return false;
+        }
+
         $setting = Setting::getSettings();
 
         if (!$setting) {
