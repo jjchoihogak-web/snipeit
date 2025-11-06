@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use \Illuminate\Contracts\View\View;
 use \Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Validator;
+use Gate;
 
 class AssetCheckinController extends Controller
 {
@@ -152,7 +153,14 @@ class AssetCheckinController extends Controller
 
         if ($asset->save()) {
 
+            if(Gate::allows('audit',Asset::class)) {
+                if ($request->filled('log_audit') == "1") {
+                    $asset->logAudit($request->input('note'), $request->input('location_id'));
+                }
+            }
+
             event(new CheckoutableCheckedIn($asset, $target, auth()->user(), $request->input('note'), $checkin_at, $originalValues));
+
             return Helper::getRedirectOption($request, $asset->id, 'Assets')
                 ->with('success', trans('admin/hardware/message.checkin.success'));
         }
