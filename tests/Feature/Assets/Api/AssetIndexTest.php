@@ -7,6 +7,7 @@ use App\Models\Company;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Testing\Fluent\AssertableJson;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class AssetIndexTest extends TestCase
@@ -124,6 +125,47 @@ class AssetIndexTest extends TestCase
                 'rows',
             ])
             ->assertJson(fn(AssertableJson $json) => $json->has('rows', 5)->etc());
+    }
+
+    public static function filterValues()
+    {
+        return [
+            ['filter%5Bassigned_to%5D'],
+            ['filter[assigned_to][not]=null'],
+            ['filter={%22assigned_to%22:{%22$ne%22:null}}'],
+            ['filter=%5B%22a%22%20%3D%3E%20%22b%22%5D'],
+        ];
+    }
+
+    /**
+     * [RB-17904]
+     * [RB-19910]
+     */
+    #[DataProvider('filterValues')]
+    public function test_handles_non_string_filter($filterString)
+    {
+        $this->actingAsForApi(User::factory()->superuser()->create())
+            ->getJson(route('api.assets.index') . '?' . $filterString)
+            ->assertOk()
+            ->assertStatusMessageIs('error')
+            ->assertMessagesContains('filter');
+    }
+
+    public function test_can_filter_results()
+    {
+        Asset::factory()->create(['purchase_date' => '2025-07-01', 'order_number' => '123']);
+        Asset::factory()->create(['purchase_date' => '2025-07-01', 'order_number' => '123']);
+        Asset::factory()->create(['purchase_date' => '2025-07-01', 'order_number' => '456']);
+
+        $this->actingAsForApi(User::factory()->superuser()->create())
+            ->getJson(route('api.assets.index', [
+                'filter' => json_encode([
+                    'order_number' => '123',
+                    'purchase_date' => '2025-07-01',
+                ]),
+            ]))
+            ->assertOk()
+            ->assertJson(fn(AssertableJson $json) => $json->has('rows', 2)->etc());
     }
 
     public function testAssetApiIndexAdheresToCompanyScoping()

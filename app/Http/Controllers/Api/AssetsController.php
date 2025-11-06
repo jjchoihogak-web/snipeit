@@ -10,6 +10,7 @@ use App\Http\Transformers\ComponentsTransformer;
 use App\Models\AccessoryCheckout;
 use App\Models\CheckoutAcceptance;
 use App\Models\LicenseSeat;
+use App\Rules\FlatArray;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Crypt;
@@ -35,8 +36,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Route;
 use App\View\Label;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\Validator;
-
 
 /**
  * This class controls all actions related to assets for
@@ -58,7 +57,12 @@ class AssetsController extends Controller
      */
     public function index(Request $request, $action = null, $upcoming_status = null) : JsonResponse | array
     {
-
+        $request->validate([
+            'filter' => [
+                'json',
+                new FlatArray,
+            ],
+        ]);
 
         // This handles the legacy audit endpoints :(
         if ($action == 'audit') {
