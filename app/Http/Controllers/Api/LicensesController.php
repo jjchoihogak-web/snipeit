@@ -136,6 +136,7 @@ class LicensesController extends Controller
                     [
                         'id',
                         'name',
+                        'version',
                         'purchase_cost',
                         'expiration_date',
                         'purchase_order',
