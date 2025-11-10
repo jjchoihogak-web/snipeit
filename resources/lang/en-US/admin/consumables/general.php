@@ -2,6 +2,9 @@
 
 return array(
     'checkout'                          => 'Checkout Consumable to User',
+    'update_stock'                      => 'Update Stock',
+    'quantity_change'                   => 'Number of Items',
+    'quantity_change_info'              => 'Write a value to add into stock or write a negative value to remove from the stock.',
     'consumable_name'                   => 'Consumable Name',
     'create'                            => 'Create Consumable',
     'item_no'                           => 'Item No.',

@@ -318,6 +318,7 @@ return [
     'unit_cost'				=> 'Unit Cost',
     'username'              => 'Username',
     'update'                => 'Update',
+    'stock_update'          => 'Stock Update',
     'updating_item' => 'Updating :item',
     'upload_filetypes_help' => 'Allowed filetypes are: :allowed_filetypes. Max upload size allowed is :size.',
     'uploaded'              => 'Uploaded',

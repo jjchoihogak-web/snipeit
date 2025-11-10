@@ -85,6 +85,9 @@ class ActionlogPresenter extends Presenter
         if ($this->action_type == 'update') {
             return 'fa-solid fa-pen';
         }
+        if ($this->action_type == 'stock update') {
+            return 'fa-solid fa-cart-plus';
+        }
 
         if ($this->action_type == 'restore') {
             return 'fa-solid fa-trash-arrow-up';

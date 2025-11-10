@@ -59,6 +59,7 @@ class ConsumablesTransformer
             'checkout' => Gate::allows('checkout', Consumable::class),
             'checkin' => Gate::allows('checkin', Consumable::class),
             'update' => Gate::allows('update', Consumable::class),
+            'update_stock' => Gate::allows('update_stock', Consumable::class),
             'delete' => Gate::allows('delete', Consumable::class),
             'clone' => (Gate::allows('create', Consumable::class) && ($consumable->deleted_at == '')),
         ];

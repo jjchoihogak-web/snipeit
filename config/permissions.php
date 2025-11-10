@@ -141,6 +141,12 @@ return [
             'display'    => true,
         ],
         [
+            'permission' => 'consumables.update_stock',
+            'label'      => 'Update Stock',
+            'note'       => 'This allows the user to update the stock level of a consumable.',
+            'display'    => true,
+        ],
+        [
             'permission' => 'consumables.files',
             'display'    => true,
         ],

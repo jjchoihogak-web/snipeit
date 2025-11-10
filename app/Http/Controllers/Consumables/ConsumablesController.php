@@ -235,4 +235,55 @@ class ConsumablesController extends Controller
             ->with('cloned_model', $consumable_to_close)
             ->with('item', $consumable);
     }
+
+    /**
+     * Return a view to display the form for consumable stock update.
+     *
+     * @author [Fahad Yousaf] [<mail@fahadyousafmahar.com>]
+     * @see ConsumablesController::postUpdateStock() method that stores the updated stock
+     * @param int $consumableId
+     * @return \Illuminate\Contracts\View\View
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     */
+    public function getUpdateStock(Consumable $consumable)
+    {
+        $this->authorize('update_stock', $consumable);
+        return view('consumables.update-stock', compact('consumable'));
+    }
+
+    /**
+     * Returns a form view to edit a consumable.
+     *
+     * @param StoreConsumableRequest $request
+     * @param Consumable $consumable
+     * @return \Illuminate\Http\RedirectResponse
+     * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @author [Fahad Yousaf] [<mail@fahadyousafmahar.com>]
+     * @see ConsumablesController::getUpdateStock() method that displays the form.
+     */
+    public function postUpdateStock(StoreConsumableRequest $request, Consumable $consumable)
+    {
+        $this->authorize('update_stock', $consumable);
+
+        $request->validate([
+            'quantity_changed' => 'required|numeric|not_in:0',
+            'note'           => 'nullable|string|max:255',
+        ]);
+
+        $delta = $request->input('quantity_changed');
+        // Adding a note and action to be used by the ConsumableObserver::updated when the log for stock update is stored.
+        $consumable->log->note = $request->input('note');
+        $consumable->log->action = 'stock update';
+
+        $consumable->qty = max(0, $consumable->qty + $delta);
+        session()->put(['redirect_option' => $request->get('redirect_option')]);
+
+        if ($consumable->save()) {
+            return Helper::getRedirectOption($request, $consumable->id, 'Consumables')
+                ->with('success', trans('admin/consumables/message.stock.success'));
+        }
+
+        return redirect()->back()->withInput()->withErrors($consumable->getErrors());
+    }
+
 }

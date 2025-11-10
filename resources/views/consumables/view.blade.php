@@ -94,6 +94,14 @@
                   </div>
                 @endif
 
+                @can('update_stock', $consumable)
+                    <div class="col-md-12">
+                        <a href="{{ route('consumables.update_stock', $consumable->id) }}" style="margin-bottom:5px;"  class="btn btn-sm btn-block btn-social btn-primary hidden-print">
+                            <x-icon type="update_stock" />
+                            {{ trans('admin/consumables/general.update_stock') }}
+                        </a>
+                    </div>
+                @endcan
                 
                 @can('update', $consumable)
                   <div class="col-md-12">

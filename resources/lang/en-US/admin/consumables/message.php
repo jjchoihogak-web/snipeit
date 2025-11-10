@@ -32,7 +32,12 @@ return array(
         'error'   		=> 'Consumable was not checked in, please try again',
         'success' 		=> 'Consumable checked in successfully.',
         'user_does_not_exist' => 'That user is invalid. Please try again.'
-    )
+    ),
+
+    'stock' => array(
+        'error'   		=> 'Consumable stock was not updated, please try again',
+        'success' 		=> 'Consumable stock updated successfully.',
+    ),
 
 
 );

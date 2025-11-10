@@ -13,6 +13,8 @@ class IconHelper
                 return 'fa-solid fa-rotate-right';
             case 'edit':
                 return 'fas fa-pencil-alt';
+            case 'update_stock':
+                return 'fas fa-cart-plus';
             case 'clone':
                 return 'far fa-clone';
             case 'delete':

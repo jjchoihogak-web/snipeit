@@ -1020,6 +1020,10 @@
                 dest = dest + '/' + row.owner_id + '/' + element_name;
             }
 
+            if ((row.available_actions) && (row.available_actions.update_stock === true)) {
+                actions += '<a href="{{ config('app.url') }}/' + dest + '/' + row.id + '/update-stock" class="actions btn btn-sm btn-primary" data-tooltip="true" title="{{ trans('admin/consumables/general.update_stock') }}"><x-icon type="update_stock" /><span class="sr-only">{{ trans('admin/consumables/general.update_stock') }}</span></a>&nbsp;';
+            }
+
             if ((row.available_actions) && (row.available_actions.clone === true)) {
                 actions += '<a href="{{ config('app.url') }}/' + dest + '/' + row.id + '/clone" class="actions btn btn-sm btn-info" data-tooltip="true" title="{{ trans('general.clone_item') }}"><x-icon type="clone" /><span class="sr-only">{{ trans('general.clone_item') }}</span></a>&nbsp;';
             }

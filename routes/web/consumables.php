@@ -20,7 +20,14 @@ Route::group(['prefix' => 'consumables', 'middleware' => ['auth']], function () 
     Route::get('{consumable}/clone',
         [Consumables\ConsumablesController::class, 'clone']
     )->name('consumables.clone.create');
-    
+
+    // Show stock update form
+    Route::get('{consumable}/update-stock', [Consumables\ConsumablesController::class, 'getUpdateStock'])
+        ->name('consumables.update_stock');
+
+    // Submit stock update
+    Route::post('{consumable}/update-stock', [Consumables\ConsumablesController::class, 'postUpdateStock'])
+        ->name('consumables.update_stock.post');
 
 });
     
