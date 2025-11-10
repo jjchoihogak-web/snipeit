@@ -97,6 +97,7 @@ return [
     'created_by'            => 'Created By',
     'record_created' 		=> 'Record Created',
     'updated_at' 			=> 'Updated at',
+    'updated_before'        => 'Updated Before',
     'currency'  			=> '$', // this is deprecated
     'currency_text'  		=> 'Currency', //
     'current'  				=> 'Current',
@@ -106,6 +107,7 @@ return [
     'dashboard'				=> 'Dashboard',
     'data_source'           => 'Data Source',
     'days'      			=> 'days',
+    'days_ago'              => 'days ago',
     'days_to_next_audit'    => 'Days to Next Audit',
     'date'					=> 'Date',
     'debug_warning'         => 'Warning!',
