@@ -518,7 +518,7 @@ Route::group(['prefix' => 'v1', 'middleware' => ['api', 'api-throttle:api']], fu
         ->where(['action' => 'audit|audits|checkins', 'upcoming_status' => 'due|overdue|due-or-overdue']);
 
 
-        // Legacy URL for audit
+        // Bulk audit for RFID, also works as a legacy endpoint
           Route::post('audit',
               [
                   Api\AssetsController::class,
