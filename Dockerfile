@@ -126,7 +126,7 @@ USER root
 
 ############### DATA VOLUME #################
 
-VOLUME ["/var/lib/snipeit"]
+
 
 ##### START SERVER
 
